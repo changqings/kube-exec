@@ -3,24 +3,24 @@ package command
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/scheme"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
 )
 
 func GetRelease(config *rest.Config, cs *kubernetes.Clientset, m map[string][]string) {
 
-	// var stdout, stderr bytes.Buffer
-	// for _, v := range m {
-	if true {
+	for _, v := range m {
 
-		ns := "default"
-		pod := "go-fiber-675455d847-6z785"
+		ns := v[0]
+		pod := v[1]
+		fmt.Printf("pod %s.%s /etc/os-release info:\n", ns, pod)
 
 		fmt.Printf("ns=%s,pod=%s\n", ns, pod)
 		req := cs.CoreV1().RESTClient().Post().
@@ -30,9 +30,10 @@ func GetRelease(config *rest.Config, cs *kubernetes.Clientset, m map[string][]st
 			SubResource("exec").
 			VersionedParams(&corev1.PodExecOptions{
 				Container: "app",
-				Command:   []string{"/bin/sh", "-c", "cat /etc/os-release"},
+				Command:   []string{"cat", "/etc/os-release"},
+				Stdin:     true,
 				Stdout:    true,
-				Stderr:    true,
+				TTY:       false,
 			}, scheme.ParameterCodec)
 
 		exec, err := remotecommand.NewSPDYExecutor(config, http.MethodPost, req.URL())
@@ -41,13 +42,17 @@ func GetRelease(config *rest.Config, cs *kubernetes.Clientset, m map[string][]st
 		}
 
 		err = exec.StreamWithContext(context.Background(), remotecommand.StreamOptions{
-			Stdout: os.Stdout,
-			Stderr: os.Stderr,
+			Stdin:  nil,
+			Stdout: io.Writer(os.Stdout),
+			Stderr: io.Writer(os.Stderr),
+			Tty:    false,
 		})
 
 		if err != nil {
 			fmt.Println("exec stream err:", err)
 		}
+
+		fmt.Println("------")
 
 	}
 }
