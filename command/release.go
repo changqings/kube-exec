@@ -1,11 +1,12 @@
 package command
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"net/http"
-	"os"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
@@ -41,15 +42,23 @@ func GetRelease(config *rest.Config, cs *kubernetes.Clientset, m map[string][]st
 			fmt.Println("exec err:", err)
 		}
 
+		var stdout, stderr bytes.Buffer
+
 		err = exec.StreamWithContext(context.Background(), remotecommand.StreamOptions{
 			Stdin:  nil,
-			Stdout: io.Writer(os.Stdout),
-			Stderr: io.Writer(os.Stderr),
+			Stdout: &stdout,
+			Stderr: &stderr,
 			Tty:    false,
 		})
 
 		if err != nil {
 			fmt.Println("exec stream err:", err)
+		}
+		scan := bufio.NewScanner(&stdout)
+		for scan.Scan() {
+			if strings.HasPrefix(scan.Text(), "ID=") {
+				fmt.Printf("os=%s\n", strings.Split(scan.Text(), "ID=")[1])
+			}
 		}
 
 		fmt.Println("------")
