@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"kube-exec/command"
+	"kube-exec/util"
 	"log"
 	"strings"
 
@@ -25,9 +26,9 @@ func main() {
 
 }
 
-func getPodDeployWithSplit(cs *kubernetes.Clientset, pods []corev1.Pod) []command.PodContainer {
+func getPodDeployWithSplit(cs *kubernetes.Clientset, pods []corev1.Pod) util.PcSlice {
 
-	pcs := []command.PodContainer{}
+	pcs := util.PcSlice{}
 	containerName := "app"
 
 	for _, p := range pods {
@@ -36,7 +37,7 @@ func getPodDeployWithSplit(cs *kubernetes.Clientset, pods []corev1.Pod) []comman
 				hash := p.GetLabels()["pod-template-hash"]
 				dpname := strings.Split(p.GenerateName, "-"+hash+"-")[0]
 				if checkContainerNameAndStat(&p, containerName) {
-					pc := command.PodContainer{
+					pc := util.PodContainer{
 						ContainerName:  containerName,
 						NameSpace:      p.Namespace,
 						PodName:        p.Name,

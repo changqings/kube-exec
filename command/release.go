@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"kube-exec/util"
 	"net/http"
 	"sort"
 	"strings"
@@ -16,33 +17,12 @@ import (
 	"k8s.io/client-go/tools/remotecommand"
 )
 
-type PodContainer struct {
-	DeploymentName string
-	NameSpace      string
-	PodName        string
-	ContainerName  string
-}
-
 type deployNs struct {
 	DeploymentName string
 	NameSpace      string
 }
 
-type PcSlice []PodContainer
-
-func (pcs PcSlice) Len() int {
-	return len(pcs)
-}
-
-func (pcs PcSlice) Less(i, j int) bool {
-	return pcs[i].NameSpace < pcs[j].NameSpace
-}
-
-func (pcs PcSlice) Swap(i, j int) {
-	pcs[i], pcs[j] = pcs[j], pcs[i]
-}
-
-func GetRelease(config *rest.Config, cs *kubernetes.Clientset, pcs PcSlice) {
+func GetRelease(config *rest.Config, cs *kubernetes.Clientset, pcs util.PcSlice) {
 
 	pcsUinq := deploymentWithOnePod(pcs)
 
@@ -88,9 +68,9 @@ func GetRelease(config *rest.Config, cs *kubernetes.Clientset, pcs PcSlice) {
 	}
 }
 
-func deploymentWithOnePod(pcs PcSlice) PcSlice {
+func deploymentWithOnePod(pcs util.PcSlice) util.PcSlice {
 
-	m := make(map[deployNs]PodContainer)
+	m := make(map[deployNs]util.PodContainer)
 
 	for _, pc := range pcs {
 		dn := deployNs{pc.DeploymentName, pc.NameSpace}
@@ -99,7 +79,7 @@ func deploymentWithOnePod(pcs PcSlice) PcSlice {
 		}
 	}
 
-	result := make(PcSlice, 0, len(m))
+	result := make(util.PcSlice, 0, len(m))
 	for _, pc := range m {
 		result = append(result, pc)
 	}
