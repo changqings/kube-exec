@@ -22,6 +22,11 @@ type PodContainer struct {
 	ContainerName  string
 }
 
+type deployNs struct {
+	DeploymentName string
+	NameSpace      string
+}
+
 func GetRelease(config *rest.Config, cs *kubernetes.Clientset, pcs []PodContainer) {
 
 	pcsUinq := deploymentWithOnePod(pcs)
@@ -68,30 +73,21 @@ func GetRelease(config *rest.Config, cs *kubernetes.Clientset, pcs []PodContaine
 	}
 }
 
-func deploymentWithOnePod(pcs []PodContainer) (result []PodContainer) {
+func deploymentWithOnePod(pcs []PodContainer) []PodContainer {
 
-	m := make(map[string][]string)
+	m := make(map[deployNs]PodContainer)
 
 	for _, pc := range pcs {
-		if v, ok := m[pc.DeploymentName]; ok {
-			if !inSlice(pc.NameSpace, v) {
-				result = append(result, pc)
-			}
-		} else {
-			m[pc.DeploymentName] = append(m[pc.DeploymentName], pc.NameSpace)
-			result = append(result, pc)
-		}
-
-	}
-
-	return
-}
-
-func inSlice(s string, ss []string) bool {
-	for _, v := range ss {
-		if v == s {
-			return true
+		dn := deployNs{pc.DeploymentName, pc.NameSpace}
+		if _, ok := m[dn]; !ok {
+			m[dn] = pc
 		}
 	}
-	return false
+
+	result := make([]PodContainer, 0, len(m))
+	for _, pc := range m {
+		result = append(result, pc)
+	}
+
+	return result
 }
