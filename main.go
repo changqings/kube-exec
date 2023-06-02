@@ -12,13 +12,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-type PodContainer struct {
-	DeploymentName string
-	NameSpace      string
-	PodName        string
-	ContainerName  []string
-}
-
 func main() {
 	cs := k8sCrdClient.GetClient()
 	config := k8sCrdClient.GetRestConfig()
@@ -27,30 +20,36 @@ func main() {
 	if err != nil {
 		log.Println(err)
 	}
-	m := getPodDeployWithSplit(cs, podsList.Items)
-	command.GetRelease(config, cs, m)
+	pcs := getPodDeployWithSplit(cs, podsList.Items)
+	command.GetRelease(config, cs, pcs)
 
 }
 
-func getPodDeployWithSplit(cs *kubernetes.Clientset, pods []corev1.Pod) map[string][]string {
+func getPodDeployWithSplit(cs *kubernetes.Clientset, pods []corev1.Pod) []command.PodContainer {
 
-	nsDeployPod := make(map[string][]string)
+	pcs := []command.PodContainer{}
 	containerName := "app"
 
 	for _, p := range pods {
 		if len(p.GetOwnerReferences()) > 0 {
 			if p.OwnerReferences[0].Kind == "ReplicaSet" {
 				hash := p.GetLabels()["pod-template-hash"]
-				dn := strings.Split(p.GenerateName, "-"+hash+"-")[0]
-				nsPod := []string{p.Namespace, p.Name}
+				dpname := strings.Split(p.GenerateName, "-"+hash+"-")[0]
 				if checkContainer(&p, containerName) {
-					nsDeployPod[dn] = nsPod
+					pc := command.PodContainer{
+						ContainerName:  containerName,
+						NameSpace:      p.Namespace,
+						PodName:        p.Name,
+						DeploymentName: dpname,
+					}
+
+					pcs = append(pcs, pc)
 				}
 			}
 		}
 	}
 
-	return nsDeployPod
+	return pcs
 }
 
 func checkContainer(p *corev1.Pod, name string) bool {

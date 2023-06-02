@@ -15,22 +15,25 @@ import (
 	"k8s.io/client-go/tools/remotecommand"
 )
 
-func GetRelease(config *rest.Config, cs *kubernetes.Clientset, m map[string][]string) {
+type PodContainer struct {
+	DeploymentName string
+	NameSpace      string
+	PodName        string
+	ContainerName  string
+}
 
-	for _, v := range m {
+func GetRelease(config *rest.Config, cs *kubernetes.Clientset, pcs []PodContainer) {
 
-		ns := v[0]
-		pod := v[1]
-		fmt.Printf("pod %s.%s /etc/os-release info:\n", ns, pod)
+	for _, pc := range pcs {
 
-		fmt.Printf("ns=%s,pod=%s\n", ns, pod)
+		fmt.Printf("pod %s.%s /etc/os-release info:\n", pc.NameSpace, pc.PodName)
 		req := cs.CoreV1().RESTClient().Post().
 			Resource("pods").
-			Namespace(ns).
-			Name(pod).
+			Namespace(pc.NameSpace).
+			Name(pc.PodName).
 			SubResource("exec").
 			VersionedParams(&corev1.PodExecOptions{
-				Container: "app",
+				Container: pc.ContainerName,
 				Command:   []string{"cat", "/etc/os-release"},
 				Stdin:     true,
 				Stdout:    true,
