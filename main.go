@@ -57,7 +57,10 @@ func checkContainerNameAndStat(p *corev1.Pod, name string) bool {
 		if v.Name == name {
 			for _, sc := range p.Status.Conditions {
 				if sc.Type == corev1.PodReady {
-					return true
+					if sc.Status == corev1.ConditionTrue {
+						return true
+					}
+
 				}
 			}
 		}
