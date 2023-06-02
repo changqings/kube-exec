@@ -26,7 +26,6 @@ func GetRelease(config *rest.Config, cs *kubernetes.Clientset, pcs []PodContaine
 
 	for _, pc := range pcs {
 
-		fmt.Printf("pod %s.%s /etc/os-release info:\n", pc.NameSpace, pc.PodName)
 		req := cs.CoreV1().RESTClient().Post().
 			Resource("pods").
 			Namespace(pc.NameSpace).
@@ -61,6 +60,7 @@ func GetRelease(config *rest.Config, cs *kubernetes.Clientset, pcs []PodContaine
 		for scan.Scan() {
 			if strings.HasPrefix(scan.Text(), "ID=") {
 				fmt.Printf("pod %s.%s /etc/os-release info: os=%s\n", pc.NameSpace, pc.PodName, strings.Split(scan.Text(), "ID=")[1])
+				break
 			}
 		}
 	}
