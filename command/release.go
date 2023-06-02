@@ -60,11 +60,8 @@ func GetRelease(config *rest.Config, cs *kubernetes.Clientset, pcs []PodContaine
 		scan := bufio.NewScanner(&stdout)
 		for scan.Scan() {
 			if strings.HasPrefix(scan.Text(), "ID=") {
-				fmt.Printf("os=%s\n", strings.Split(scan.Text(), "ID=")[1])
+				fmt.Printf("pod %s.%s /etc/os-release info: os=%s\n", pc.NameSpace, pc.PodName, strings.Split(scan.Text(), "ID=")[1])
 			}
 		}
-
-		fmt.Println("------")
-
 	}
 }
