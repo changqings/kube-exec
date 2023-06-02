@@ -35,7 +35,7 @@ func getPodDeployWithSplit(cs *kubernetes.Clientset, pods []corev1.Pod) []comman
 			if p.OwnerReferences[0].Kind == "ReplicaSet" {
 				hash := p.GetLabels()["pod-template-hash"]
 				dpname := strings.Split(p.GenerateName, "-"+hash+"-")[0]
-				if checkContainer(&p, containerName) {
+				if checkContainerNameAndStat(&p, containerName) {
 					pc := command.PodContainer{
 						ContainerName:  containerName,
 						NameSpace:      p.Namespace,
@@ -52,10 +52,14 @@ func getPodDeployWithSplit(cs *kubernetes.Clientset, pods []corev1.Pod) []comman
 	return pcs
 }
 
-func checkContainer(p *corev1.Pod, name string) bool {
+func checkContainerNameAndStat(p *corev1.Pod, name string) bool {
 	for _, v := range p.Spec.Containers {
 		if v.Name == name {
-			return true
+			for _, sc := range p.Status.Conditions {
+				if sc.Type == corev1.PodReady {
+					return true
+				}
+			}
 		}
 	}
 
