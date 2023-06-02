@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"sort"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -27,7 +28,21 @@ type deployNs struct {
 	NameSpace      string
 }
 
-func GetRelease(config *rest.Config, cs *kubernetes.Clientset, pcs []PodContainer) {
+type PcSlice []PodContainer
+
+func (pcs PcSlice) Len() int {
+	return len(pcs)
+}
+
+func (pcs PcSlice) Less(i, j int) bool {
+	return pcs[i].NameSpace < pcs[j].NameSpace
+}
+
+func (pcs PcSlice) Swap(i, j int) {
+	pcs[i], pcs[j] = pcs[j], pcs[i]
+}
+
+func GetRelease(config *rest.Config, cs *kubernetes.Clientset, pcs PcSlice) {
 
 	pcsUinq := deploymentWithOnePod(pcs)
 
@@ -66,14 +81,14 @@ func GetRelease(config *rest.Config, cs *kubernetes.Clientset, pcs []PodContaine
 		scan := bufio.NewScanner(&stdout)
 		for scan.Scan() {
 			if strings.HasPrefix(scan.Text(), "ID=") {
-				fmt.Printf("pod %s.%s /etc/os-release info: os=%s\n", pc.NameSpace, pc.PodName, strings.Split(scan.Text(), "ID=")[1])
+				fmt.Printf("ns=%s deployment=%s pod=%s /etc/os-release info: os=%s\n", pc.NameSpace, pc.DeploymentName, pc.PodName, strings.Split(scan.Text(), "ID=")[1])
 				break
 			}
 		}
 	}
 }
 
-func deploymentWithOnePod(pcs []PodContainer) []PodContainer {
+func deploymentWithOnePod(pcs PcSlice) PcSlice {
 
 	m := make(map[deployNs]PodContainer)
 
@@ -84,10 +99,12 @@ func deploymentWithOnePod(pcs []PodContainer) []PodContainer {
 		}
 	}
 
-	result := make([]PodContainer, 0, len(m))
+	result := make(PcSlice, 0, len(m))
 	for _, pc := range m {
 		result = append(result, pc)
 	}
+
+	sort.Sort(result)
 
 	return result
 }
