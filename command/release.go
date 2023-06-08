@@ -22,6 +22,11 @@ type deployNs struct {
 	NameSpace      string
 }
 
+type osVersion struct {
+	id      string
+	version string
+}
+
 func GetRelease(config *rest.Config, cs *kubernetes.Clientset, pcs util.PcSlice) {
 
 	pcsUinq := deploymentWithOnePod(pcs)
@@ -44,6 +49,7 @@ func GetRelease(config *rest.Config, cs *kubernetes.Clientset, pcs util.PcSlice)
 		exec, err := remotecommand.NewSPDYExecutor(config, http.MethodPost, req.URL())
 		if err != nil {
 			fmt.Println("exec err:", err)
+			continue
 		}
 
 		var stdout, stderr bytes.Buffer
@@ -57,14 +63,21 @@ func GetRelease(config *rest.Config, cs *kubernetes.Clientset, pcs util.PcSlice)
 
 		if err != nil {
 			fmt.Println("exec stream err:", err)
+			continue
 		}
+
+		os := osVersion{}
+
 		scan := bufio.NewScanner(&stdout)
 		for scan.Scan() {
 			if strings.HasPrefix(scan.Text(), "ID=") {
-				fmt.Printf("ns=%s deployment=%s pod=%s /etc/os-release info: os=%s\n", pc.NameSpace, pc.DeploymentName, pc.PodName, strings.Split(scan.Text(), "ID=")[1])
-				break
+				os.id = strings.Split(scan.Text(), "ID=")[1]
+			}
+			if strings.HasPrefix(scan.Text(), "VERSION_ID=") {
+				os.version = strings.Split(scan.Text(), "VERSION_ID=")[1]
 			}
 		}
+		fmt.Printf("ns=%s deployment=%s pod=%s /etc/os-release info: os=%s version=%s\n", pc.NameSpace, pc.DeploymentName, pc.PodName, os.id, os.version)
 	}
 }
 
