@@ -4,10 +4,9 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"fmt"
 	"kube-exec/util"
+	"log/slog"
 	"net/http"
-	"sort"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -17,11 +16,6 @@ import (
 	"k8s.io/client-go/tools/remotecommand"
 )
 
-type deployNs struct {
-	DeploymentName string
-	NameSpace      string
-}
-
 type osVersion struct {
 	id      string
 	version string
@@ -29,7 +23,7 @@ type osVersion struct {
 
 func GetRelease(config *rest.Config, cs *kubernetes.Clientset, pcs util.PcSlice) {
 
-	pcsUinq := deploymentWithOnePod(pcs)
+	pcsUinq := util.DeploymentWithOnePod(pcs)
 
 	for _, pc := range pcsUinq {
 
@@ -48,7 +42,7 @@ func GetRelease(config *rest.Config, cs *kubernetes.Clientset, pcs util.PcSlice)
 
 		exec, err := remotecommand.NewSPDYExecutor(config, http.MethodPost, req.URL())
 		if err != nil {
-			fmt.Println("exec err:", err)
+			slog.Error("exec NewSPDYExecutor()", "msg", err)
 			continue
 		}
 
@@ -62,7 +56,7 @@ func GetRelease(config *rest.Config, cs *kubernetes.Clientset, pcs util.PcSlice)
 		})
 
 		if err != nil {
-			fmt.Println("exec stream err:", err)
+			slog.Error("exec StreamWithContext()", "msg", err)
 			continue
 		}
 
@@ -74,30 +68,10 @@ func GetRelease(config *rest.Config, cs *kubernetes.Clientset, pcs util.PcSlice)
 				os.id = strings.Split(scan.Text(), "ID=")[1]
 			}
 			if strings.HasPrefix(scan.Text(), "VERSION_ID=") {
-				os.version = strings.Split(scan.Text(), "VERSION_ID=")[1]
+				v := strings.Split(scan.Text(), "VERSION_ID=")[1]
+				os.version = strings.Trim(v, "\"")
 			}
 		}
-		fmt.Printf("ns=%s deployment=%s pod=%s /etc/os-release info: os=%s version=%s\n", pc.NameSpace, pc.DeploymentName, pc.PodName, os.id, os.version)
+		slog.Info("Get pod os_version:", "ns", pc.NameSpace, "deployment", pc.DeploymentName, "pod", pc.PodName, "os", os.id, "version", os.version)
 	}
-}
-
-func deploymentWithOnePod(pcs util.PcSlice) util.PcSlice {
-
-	m := make(map[deployNs]util.PodContainer)
-
-	for _, pc := range pcs {
-		dn := deployNs{pc.DeploymentName, pc.NameSpace}
-		if _, ok := m[dn]; !ok {
-			m[dn] = pc
-		}
-	}
-
-	result := make(util.PcSlice, 0, len(m))
-	for _, pc := range m {
-		result = append(result, pc)
-	}
-
-	sort.Sort(result)
-
-	return result
 }
